@@ -15,6 +15,36 @@ layout(std430, binding = 0) buffer CrystalBuffer {
 uniform float uDelta;
 uniform float uTime;
 uniform uint uCount;
+uniform uint uSeed;
+uniform int uDistribution;
+uniform float uSpacing;
+uniform float uJitter;
+uniform float uSparsity;
+uniform int uClusterCount;
+uniform float uClusterRadius;
+uniform float uSpiralTurns;
+
+uniform float uMinRadius;
+uniform float uMaxRadius;
+uniform float uMinHeight;
+uniform float uMaxHeight;
+uniform float uHeightPower;
+uniform float uGrowthMin;
+uniform float uGrowthMax;
+uniform float uGrowthMultiplier;
+uniform float uPulseStrength;
+
+uniform float uMineralScale;
+uniform float uMineralWarp;
+uniform float uMineralContrast;
+uniform vec3 uPaletteA;
+uniform vec3 uPaletteB;
+uniform vec3 uPaletteC;
+uniform float uThirdColorMix;
+uniform float uColorVariation;
+
+const float PI = 3.14159265358979323846;
+const float GOLDEN_ANGLE = 2.39996322972865332;
 
 uint hash(uint x) {
     x += x << 10u;
@@ -25,44 +55,104 @@ uint hash(uint x) {
     return x;
 }
 
-float random01(uint seed) {
-    return float(hash(seed)) / 4294967295.0;
+uint seededHash(uint value, uint salt) {
+    return hash(value ^ hash(uSeed + salt * 0x9E3779B9u));
+}
+
+float random01(uint value, uint salt) {
+    return float(seededHash(value, salt)) / 4294967295.0;
+}
+
+vec2 placement(uint id, float r0, float r1) {
+    uint side = uint(ceil(sqrt(float(max(uCount, 1u)))));
+    float halfSide = float(max(side, 1u) - 1u) * 0.5;
+    float fieldRadius = max(1.0, float(side) * uSpacing * 0.5);
+    vec2 xz;
+
+    if (uDistribution == 1) {
+        // Sunflower / golden-angle disk.
+        float t = (float(id) + 0.5) / float(max(uCount, 1u));
+        float radius = sqrt(t) * fieldRadius;
+        float angle = float(id) * GOLDEN_ANGLE + (r0 - 0.5) * uJitter;
+        xz = vec2(cos(angle), sin(angle)) * radius;
+    } else if (uDistribution == 2) {
+        // Continuous mathematical spiral.
+        float t = (float(id) + 0.5) / float(max(uCount, 1u));
+        float radius = sqrt(t) * fieldRadius;
+        float angle = t * max(1.0, uSpiralTurns) * 2.0 * PI;
+        angle += (r0 - 0.5) * uJitter * 0.7;
+        xz = vec2(cos(angle), sin(angle)) * radius;
+    } else if (uDistribution == 3) {
+        // Deterministic random clusters. Each crystal selects one seeded center.
+        uint count = uint(max(uClusterCount, 1));
+        uint cluster = seededHash(id, 401u) % count;
+        float cx = random01(cluster, 409u) * 2.0 - 1.0;
+        float cz = random01(cluster, 419u) * 2.0 - 1.0;
+        vec2 center = vec2(cx, cz) * fieldRadius * 0.82;
+        float localAngle = r0 * 2.0 * PI;
+        float localRadius = sqrt(r1) * max(0.05, uClusterRadius);
+        xz = center + vec2(cos(localAngle), sin(localAngle)) * localRadius;
+    } else {
+        // Jittered grid.
+        uint gx = id % side;
+        uint gz = id / side;
+        xz = (vec2(float(gx), float(gz)) - halfSide) * uSpacing;
+        xz += vec2(r0 - 0.5, r1 - 0.5) * uSpacing * uJitter;
+    }
+
+    // Small universal offset keeps even the radial modes from looking too perfect.
+    vec2 micro = vec2(
+        random01(id, 431u) - 0.5,
+        random01(id, 433u) - 0.5
+    );
+    xz += micro * uSpacing * uJitter * 0.22;
+    return xz;
+}
+
+float mineralField(vec2 xz) {
+    float scale = max(0.001, uMineralScale);
+    float seedPhase = float(uSeed & 65535u) * 0.00031;
+
+    float warpX = sin(xz.y * scale * 0.83 + seedPhase) * uMineralWarp;
+    float warpZ = cos(xz.x * scale * 0.71 - seedPhase * 1.37) * uMineralWarp;
+    vec2 p = xz + vec2(warpX, warpZ);
+
+    float bands = sin(p.x * scale + sin(p.y * scale * 0.91 + seedPhase));
+    float rings = sin(length(p) * scale * 2.3 - seedPhase * 3.0);
+    float cross = sin((p.x + p.y) * scale * 0.47 + seedPhase * 2.0);
+
+    float field = 0.5 + 0.5 * (bands * 0.58 + rings * 0.27 + cross * 0.15);
+    field = clamp((field - 0.5) * max(0.01, uMineralContrast) + 0.5, 0.0, 1.0);
+    return field;
 }
 
 void initializeCrystal(uint id, inout Crystal c) {
-    uint side = uint(ceil(sqrt(float(uCount))));
-    uint gx = id % side;
-    uint gz = id / side;
+    float r0 = random01(id, 11u);
+    float r1 = random01(id, 37u);
+    float r2 = random01(id, 71u);
+    float r3 = random01(id, 101u);
 
-    float r0 = random01(id * 17u + 11u);
-    float r1 = random01(id * 29u + 37u);
-    float r2 = random01(id * 43u + 71u);
-    float r3 = random01(id * 59u + 101u);
+    vec2 xz = placement(id, r0, r1);
+    float mineral = mineralField(xz);
+    float sparse = random01(id, 149u);
 
-    float spacing = 0.46;
-    float halfSide = float(side - 1u) * 0.5;
-    vec2 jitter = vec2(r0 - 0.5, r1 - 0.5) * spacing * 0.72;
-    vec2 xz = (vec2(float(gx), float(gz)) - halfSide) * spacing + jitter;
-
-    // Broad interference bands produce non-uniform "mineral" regions before
-    // the real Voronoi field milestone is introduced.
-    float mineralField = 0.5 + 0.5 * sin(xz.x * 0.23 + sin(xz.y * 0.17));
-    float sparse = random01(id * 83u + 149u);
-
-    float radius = mix(0.055, 0.19, r2 * r2);
-    if (sparse < 0.13) {
-        radius *= 0.05;
+    float radiusNoise = r2 * r2;
+    float radius = mix(max(0.001, uMinRadius), max(uMinRadius, uMaxRadius), radiusNoise);
+    if (sparse < clamp(uSparsity, 0.0, 0.98)) {
+        radius *= 0.015;
     }
 
-    float targetHeight = mix(0.35, 4.8, pow(r3, 2.6));
-    targetHeight *= mix(0.65, 1.55, mineralField);
-    float growthSpeed = mix(0.08, 0.72, random01(id * 97u + 211u));
+    float shapedHeight = pow(max(r3, 0.0001), max(0.05, uHeightPower));
+    float targetHeight = mix(max(0.01, uMinHeight), max(uMinHeight, uMaxHeight), shapedHeight);
+    targetHeight *= mix(0.58, 1.62, mineral);
 
-    vec3 cyan = vec3(0.04, 0.52, 0.88);
-    vec3 violet = vec3(0.66, 0.12, 0.96);
-    vec3 emerald = vec3(0.04, 0.86, 0.58);
-    vec3 color = mix(cyan, violet, mineralField);
-    color = mix(color, emerald, r1 * 0.38);
+    float growthSpeed = mix(max(0.001, uGrowthMin), max(uGrowthMin, uGrowthMax), random01(id, 211u));
+
+    vec3 color = mix(uPaletteA, uPaletteB, mineral);
+    color = mix(color, uPaletteC, r1 * clamp(uThirdColorMix, 0.0, 1.0));
+    float colorNoise = random01(id, 271u) - 0.5;
+    color *= 1.0 + colorNoise * uColorVariation;
+    color = clamp(color, vec3(0.0), vec3(2.0));
 
     c.positionHeight = vec4(xz.x, 0.0, xz.y, 0.025);
     c.params = vec4(radius, growthSpeed, 1.0, targetHeight);
@@ -80,11 +170,14 @@ void main() {
         initializeCrystal(id, c);
     }
 
-    float phase = random01(id * 131u + 17u) * 6.28318530718;
-    float pulse = 0.82 + 0.18 * sin(uTime * 0.65 + phase);
+    float phase = random01(id, 317u) * 2.0 * PI;
+    float wave = 0.5 + 0.5 * sin(uTime * 0.65 + phase);
+    float pulse = mix(1.0, wave, clamp(uPulseStrength, 0.0, 0.98));
     float remaining = max(0.0, c.params.w - c.positionHeight.w);
     float slowdown = smoothstep(0.0, 0.9, remaining);
-    c.positionHeight.w += uDelta * c.params.y * pulse * max(0.06, slowdown);
+
+    c.positionHeight.w += uDelta * c.params.y * max(0.0, uGrowthMultiplier)
+                         * pulse * max(0.045, slowdown);
     c.positionHeight.w = min(c.positionHeight.w, c.params.w);
 
     crystals[id] = c;
