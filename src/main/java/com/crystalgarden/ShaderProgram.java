@@ -128,7 +128,15 @@ public final class ShaderProgram implements AutoCloseable {
             if (input == null) {
                 throw new IllegalArgumentException("Missing shader resource: " + resource);
             }
-            return new String(input.readAllBytes(), StandardCharsets.UTF_8);
+            String source = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+
+            // NVIDIA's GLSL compiler treats `active` as a reserved identifier. The
+            // mineral formation vertex shader used it as a boolean/output parameter,
+            // which caused the first syntax error and a cascade of bogus follow-on
+            // errors. Rename that identifier in-memory before GLSL compilation so
+            // source line numbers stay intact and the shader remains driver-portable.
+            source = source.replaceAll("\\bactive\\b", "vertexValid");
+            return source;
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read shader resource: " + resource, e);
         }
