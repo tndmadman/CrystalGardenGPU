@@ -75,6 +75,7 @@ public final class Application {
         glDepthFunc(GL_LEQUAL);
 
         settings = new GardenSettings();
+        settings.applyMineralPreset(0);
         camera = new Camera();
         garden = new CrystalGarden();
         controlPanel = new GardenControlPanel();
