@@ -10,7 +10,7 @@ import static org.lwjgl.opengl.GL46.*;
 public final class CrystalGarden implements AutoCloseable {
     private static final int CRYSTAL_STRIDE_BYTES = 48;
     private static final int MAX_SIDES = 12;
-    private static final int VERTICES_PER_CRYSTAL = MAX_SIDES * 9;
+    private static final int VERTICES_PER_SHARD = MAX_SIDES * 9;
 
     private final ShaderProgram computeShader;
     private final ShaderProgram renderShader;
@@ -111,6 +111,10 @@ public final class CrystalGarden implements AutoCloseable {
         renderShader.setFloat("uBend", s.bend[0]);
         renderShader.setFloat("uMotionStrength", s.motionStrength[0]);
         renderShader.setFloat("uMotionSpeed", s.motionSpeed[0]);
+        renderShader.setInt("uShardCount", s.shardsPerCluster[0]);
+        renderShader.setFloat("uShardSpread", s.shardSpread[0]);
+        renderShader.setFloat("uShardScale", s.shardScale[0]);
+        renderShader.setFloat("uShardLean", s.shardLean[0]);
 
         renderShader.setFloat("uAmbient", s.ambient[0]);
         renderShader.setFloat("uLightIntensity", s.lightIntensity[0]);
@@ -128,7 +132,8 @@ public final class CrystalGarden implements AutoCloseable {
 
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
         glBindVertexArray(vao);
-        glDrawArraysInstanced(GL_TRIANGLES, 0, VERTICES_PER_CRYSTAL, s.activeCount[0]);
+        int verticesPerCluster = VERTICES_PER_SHARD * s.shardsPerCluster[0];
+        glDrawArraysInstanced(GL_TRIANGLES, 0, verticesPerCluster, s.activeCount[0]);
         glBindVertexArray(0);
     }
 
