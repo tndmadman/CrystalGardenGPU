@@ -10,8 +10,8 @@ public final class Camera {
     private float yaw = (float) Math.toRadians(-90.0);
     private float pitch = (float) Math.toRadians(-16.0);
 
-    public void updateMovement(long window, float deltaSeconds) {
-        float speed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? 18.0f : 7.0f;
+    public void updateMovement(long window, float deltaSeconds, float normalSpeed, float boostSpeed) {
+        float speed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? boostSpeed : normalSpeed;
         float distance = speed * deltaSeconds;
 
         Vector3f forward = forward();
@@ -37,8 +37,7 @@ public final class Camera {
         }
     }
 
-    public void addLookDelta(double deltaX, double deltaY) {
-        float sensitivity = 0.0022f;
+    public void addLookDelta(double deltaX, double deltaY, float sensitivity) {
         yaw += (float) deltaX * sensitivity;
         pitch -= (float) deltaY * sensitivity;
         float limit = (float) Math.toRadians(89.0);
