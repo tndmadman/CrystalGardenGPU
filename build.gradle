@@ -1,0 +1,59 @@
+plugins {
+    id 'application'
+}
+
+group = 'com.crystalgarden'
+version = '0.1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+def lwjglVersion = '3.3.6'
+def jomlVersion = '1.10.8'
+def osName = System.getProperty('os.name').toLowerCase()
+def arch = System.getProperty('os.arch').toLowerCase()
+def isArm64 = arch.contains('aarch64') || arch.contains('arm64')
+
+def lwjglNatives
+if (osName.contains('win')) {
+    lwjglNatives = isArm64 ? 'natives-windows-arm64' : 'natives-windows'
+} else if (osName.contains('mac')) {
+    lwjglNatives = isArm64 ? 'natives-macos-arm64' : 'natives-macos'
+} else {
+    lwjglNatives = isArm64 ? 'natives-linux-arm64' : 'natives-linux'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    implementation platform("org.lwjgl:lwjgl-bom:${lwjglVersion}")
+
+    implementation 'org.lwjgl:lwjgl'
+    implementation 'org.lwjgl:lwjgl-glfw'
+    implementation 'org.lwjgl:lwjgl-opengl'
+    implementation "org.joml:joml:${jomlVersion}"
+
+    runtimeOnly "org.lwjgl:lwjgl::${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-glfw::${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-opengl::${lwjglNatives}"
+}
+
+application {
+    mainClass = 'com.crystalgarden.Main'
+}
+
+if (osName.contains('mac')) {
+    tasks.named('run') {
+        jvmArgs '-XstartOnFirstThread'
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}

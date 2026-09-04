@@ -1,0 +1,91 @@
+#version 460 core
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+struct Crystal {
+    vec4 positionHeight; // xyz = base position, w = current height
+    vec4 params;         // x = radius, y = growth speed, z = initialized, w = target height
+    vec4 color;
+};
+
+layout(std430, binding = 0) buffer CrystalBuffer {
+    Crystal crystals[];
+};
+
+uniform float uDelta;
+uniform float uTime;
+uniform uint uCount;
+
+uint hash(uint x) {
+    x += x << 10u;
+    x ^= x >> 6u;
+    x += x << 3u;
+    x ^= x >> 11u;
+    x += x << 15u;
+    return x;
+}
+
+float random01(uint seed) {
+    return float(hash(seed)) / 4294967295.0;
+}
+
+void initializeCrystal(uint id, inout Crystal c) {
+    uint side = uint(ceil(sqrt(float(uCount))));
+    uint gx = id % side;
+    uint gz = id / side;
+
+    float r0 = random01(id * 17u + 11u);
+    float r1 = random01(id * 29u + 37u);
+    float r2 = random01(id * 43u + 71u);
+    float r3 = random01(id * 59u + 101u);
+
+    float spacing = 0.46;
+    float halfSide = float(side - 1u) * 0.5;
+    vec2 jitter = vec2(r0 - 0.5, r1 - 0.5) * spacing * 0.72;
+    vec2 xz = (vec2(float(gx), float(gz)) - halfSide) * spacing + jitter;
+
+    // Broad interference bands produce non-uniform "mineral" regions before
+    // the real Voronoi field milestone is introduced.
+    float mineralField = 0.5 + 0.5 * sin(xz.x * 0.23 + sin(xz.y * 0.17));
+    float sparse = random01(id * 83u + 149u);
+
+    float radius = mix(0.055, 0.19, r2 * r2);
+    if (sparse < 0.13) {
+        radius *= 0.05;
+    }
+
+    float targetHeight = mix(0.35, 4.8, pow(r3, 2.6));
+    targetHeight *= mix(0.65, 1.55, mineralField);
+    float growthSpeed = mix(0.08, 0.72, random01(id * 97u + 211u));
+
+    vec3 cyan = vec3(0.04, 0.52, 0.88);
+    vec3 violet = vec3(0.66, 0.12, 0.96);
+    vec3 emerald = vec3(0.04, 0.86, 0.58);
+    vec3 color = mix(cyan, violet, mineralField);
+    color = mix(color, emerald, r1 * 0.38);
+
+    c.positionHeight = vec4(xz.x, 0.0, xz.y, 0.025);
+    c.params = vec4(radius, growthSpeed, 1.0, targetHeight);
+    c.color = vec4(color, 1.0);
+}
+
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+    if (id >= uCount) {
+        return;
+    }
+
+    Crystal c = crystals[id];
+    if (c.params.z < 0.5) {
+        initializeCrystal(id, c);
+    }
+
+    float phase = random01(id * 131u + 17u) * 6.28318530718;
+    float pulse = 0.82 + 0.18 * sin(uTime * 0.65 + phase);
+    float remaining = max(0.0, c.params.w - c.positionHeight.w);
+    float slowdown = smoothstep(0.0, 0.9, remaining);
+    c.positionHeight.w += uDelta * c.params.y * pulse * max(0.06, slowdown);
+    c.positionHeight.w = min(c.positionHeight.w, c.params.w);
+
+    crystals[id] = c;
+}

@@ -8,7 +8,7 @@ Build a living mathematical crystal garden where crystal placement, growth, shap
 
 ## Current prototype
 
-The first milestone uses a compute shader to initialize and grow thousands of crystal instances in an SSBO. A vertex shader procedurally creates hexagonal crystal prisms from `gl_VertexID`, so there is no crystal mesh asset to load. Java handles the window, camera, input, timing, and dispatch.
+The first milestone uses a compute shader to initialize and grow **16,384 crystal instances** in an SSBO. A vertex shader procedurally creates tapered six-sided crystal prisms from `gl_VertexID`, so there is no crystal mesh asset to load. Java handles the window, camera, input, timing, compute dispatch, and draw orchestration.
 
 ### Controls
 
@@ -16,8 +16,8 @@ The first milestone uses a compute shader to initialize and grow thousands of cr
 - `Space` / `Left Ctrl` — move up/down
 - Mouse — look
 - `Shift` — faster movement
-- `Esc` — release/capture mouse; press again while released to exit
-- `R` — reset/reseed the garden
+- `R` — reset/reseed growth state
+- `Esc` — release mouse; press again to exit
 
 ## Stack
 
@@ -30,15 +30,19 @@ The first milestone uses a compute shader to initialize and grow thousands of cr
 
 ## Run
 
+With Gradle installed:
+
 ```bash
-./gradlew run
+gradle run
 ```
 
-On Windows:
+If you want a Gradle wrapper in your clone, generate it once with:
 
-```powershell
-.\gradlew.bat run
+```bash
+gradle wrapper
 ```
+
+Then future launches can use `./gradlew run` or `.\gradlew.bat run` on Windows.
 
 A GPU/driver exposing OpenGL 4.6 is required. The project is targeted primarily at modern NVIDIA hardware; the original development target is an RTX 3090.
 
@@ -57,19 +61,21 @@ OpenGL 4.6
   │    └─ crystal generation + growth → SSBO
   │
   └─ Instanced renderer
-       ├─ vertex shader generates crystal prism geometry
-       └─ fragment shader handles lighting / glow
+       ├─ vertex shader synthesizes crystal geometry
+       └─ fragment shader handles lighting / edge glow / fog
 ```
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the state layout and frame flow.
 
 ## Roadmap
 
-1. GPU crystal growth prototype
+1. GPU crystal growth prototype — **started**
 2. Branching crystal clusters and multiple symmetry families
 3. Voronoi territory / mineral fields
 4. Curl/simplex-noise growth direction
 5. Reaction-diffusion nucleation map
-6. Better transparent/refractive crystal material
-7. HDR + bloom + fog
+6. Transparent/refractive crystal material
+7. HDR + bloom + volumetric fog
 8. L-system crystal trees
 9. GPU indirect draw / culling for very large gardens
 10. Optional SDF ray-marched crystal species
