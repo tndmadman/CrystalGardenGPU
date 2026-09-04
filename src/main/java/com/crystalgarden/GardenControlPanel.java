@@ -14,8 +14,10 @@ public final class GardenControlPanel {
         boolean exitRequested = false;
 
         ImGui.begin("Crystal Garden Lab");
-        ImGui.text("GPU procedural crystal sandbox");
-        ImGui.text("FPS: " + Math.round(ImGui.getIO().getFramerate()) + "   Active: " + s.activeCount[0]);
+        ImGui.text("GPU procedural mineral formation sandbox");
+        ImGui.text("FPS: " + Math.round(ImGui.getIO().getFramerate())
+                + "   Bases: " + s.activeCount[0]
+                + "   Shards/base: " + s.shardsPerCluster[0]);
         ImGui.separator();
 
         if (ImGui.button("New Garden")) {
@@ -30,6 +32,28 @@ public final class GardenControlPanel {
         if (ImGui.button("Randomize Everything")) {
             s.randomizeAll();
             regenerate = true;
+        }
+
+        if (ImGui.collapsingHeader("Mineral Formations (20)")) {
+            ImInt presetValue = new ImInt(s.selectedMineralPreset[0]);
+            if (ImGui.combo("Mineral / crystal habit", presetValue, MineralPresetLibrary.NAMES)) {
+                s.applyMineralPreset(presetValue.get());
+                regenerate = true;
+            }
+
+            int selected = Math.max(0, Math.min(MineralPresetLibrary.NAMES.length - 1, s.selectedMineralPreset[0]));
+            ImGui.textWrapped(MineralPresetLibrary.DESCRIPTIONS[selected]);
+
+            if (ImGui.button("Reload Selected Formation")) {
+                s.applyMineralPreset(selected);
+                regenerate = true;
+            }
+            ImGui.sameLine();
+            if (ImGui.button("New Seed, Same Mineral")) {
+                s.randomizeSeed();
+                regenerate = true;
+            }
+            ImGui.textWrapped("Loading a mineral sets geometry, cluster habit, palette, surface response, and material properties. Every value remains editable afterward.");
         }
 
         if (ImGui.collapsingHeader("Lifecycle / Live Generation")) {
@@ -48,7 +72,6 @@ public final class GardenControlPanel {
             if (ImGui.checkbox("Auto new garden", autoRegenerateValue)) {
                 s.autoRegenerate[0] = autoRegenerateValue.get();
             }
-
             ImGui.sliderFloat("Auto regen seconds", s.autoRegenerateSeconds, 1.0f, 60.0f);
 
             ImBoolean pauseGrowthValue = new ImBoolean(s.pauseGrowth[0]);
@@ -60,7 +83,7 @@ public final class GardenControlPanel {
         }
 
         if (ImGui.collapsingHeader("Population / Distribution")) {
-            if (ImGui.sliderInt("Crystal count", s.activeCount, 256, GardenSettings.MAX_CRYSTALS)) generationChanged = true;
+            if (ImGui.sliderInt("Crystal base count", s.activeCount, 256, GardenSettings.MAX_CRYSTALS)) generationChanged = true;
 
             ImInt distributionValue = new ImInt(s.distribution[0]);
             if (ImGui.combo("Distribution", distributionValue, GardenSettings.DISTRIBUTIONS)) {
@@ -77,8 +100,8 @@ public final class GardenControlPanel {
         }
 
         if (ImGui.collapsingHeader("Crystal Size / Growth")) {
-            if (ImGui.sliderFloat("Minimum radius", s.minRadius, 0.005f, 0.40f)) generationChanged = true;
-            if (ImGui.sliderFloat("Maximum radius", s.maxRadius, 0.01f, 0.80f)) generationChanged = true;
+            if (ImGui.sliderFloat("Minimum radius", s.minRadius, 0.005f, 0.50f)) generationChanged = true;
+            if (ImGui.sliderFloat("Maximum radius", s.maxRadius, 0.01f, 0.90f)) generationChanged = true;
             if (ImGui.sliderFloat("Minimum height", s.minHeight, 0.02f, 4.0f)) generationChanged = true;
             if (ImGui.sliderFloat("Maximum height", s.maxHeight, 0.10f, 16.0f)) generationChanged = true;
             if (ImGui.sliderFloat("Height distribution power", s.heightPower, 0.25f, 6.0f)) generationChanged = true;
@@ -88,7 +111,12 @@ public final class GardenControlPanel {
             ImGui.sliderFloat("Growth pulse", s.pulseStrength, 0.0f, 0.95f);
         }
 
-        if (ImGui.collapsingHeader("Geometry / Complexity")) {
+        if (ImGui.collapsingHeader("Formation Geometry / Complexity")) {
+            ImInt formationValue = new ImInt(s.formationType[0]);
+            if (ImGui.combo("Formation geometry", formationValue, GardenSettings.FORMATIONS)) {
+                s.formationType[0] = formationValue.get();
+            }
+
             ImGui.sliderInt("Polygon sides", s.sides, 3, 12);
             ImGui.sliderFloat("Shoulder taper", s.taper, 0.15f, 1.35f);
             ImGui.sliderFloat("Tip length ratio", s.tipRatio, 0.02f, 0.70f);
@@ -97,11 +125,23 @@ public final class GardenControlPanel {
             ImGui.sliderFloat("Field bend", s.bend, 0.0f, 1.0f);
             ImGui.sliderFloat("Living sway", s.motionStrength, 0.0f, 0.50f);
             ImGui.sliderFloat("Sway speed", s.motionSpeed, 0.0f, 5.0f);
+
             ImGui.separator();
-            ImGui.sliderInt("Shards per crystal cluster", s.shardsPerCluster, 1, GardenSettings.MAX_SHARDS_PER_CLUSTER);
+            ImGui.sliderInt("Shards per cluster", s.shardsPerCluster, 1, GardenSettings.MAX_SHARDS_PER_CLUSTER);
             ImGui.sliderFloat("Satellite spread", s.shardSpread, 0.0f, 7.0f);
             ImGui.sliderFloat("Satellite size", s.shardScale, 0.1f, 1.2f);
             ImGui.sliderFloat("Satellite outward lean", s.shardLean, 0.0f, 1.5f);
+            ImGui.sliderFloat("Formation irregularity", s.formationIrregularity, 0.0f, 0.75f);
+
+            ImGui.separator();
+            ImGui.text("Formation-specific controls");
+            ImGui.sliderFloat("Blade thickness", s.bladeThickness, 0.03f, 1.0f);
+            ImGui.sliderInt("Hopper steps", s.hopperSteps, 1, 4);
+            ImGui.sliderFloat("Hopper inset", s.hopperInset, 0.02f, 0.45f);
+            ImGui.sliderFloat("Bipyramid waist height", s.bipyramidWaist, 0.15f, 0.85f);
+            ImGui.sliderInt("Dendrite branch levels", s.dendriteBranches, 1, 3);
+            ImGui.sliderFloat("Dendrite branch angle", s.dendriteAngle, 0.10f, 1.35f);
+            ImGui.sliderFloat("Starburst / fan radial force", s.radialStrength, 0.0f, 1.8f);
         }
 
         if (ImGui.collapsingHeader("Mineral Field / Colors")) {
@@ -115,11 +155,20 @@ public final class GardenControlPanel {
             if (ImGui.sliderFloat("Per-crystal color variation", s.colorVariation, 0.0f, 0.65f)) generationChanged = true;
         }
 
-        if (ImGui.collapsingHeader("Material / Lighting / Fog")) {
+        if (ImGui.collapsingHeader("Surface / Material / Lighting / Fog")) {
+            ImInt surfaceValue = new ImInt(s.surfaceStyle[0]);
+            if (ImGui.combo("Surface structure", surfaceValue, GardenSettings.SURFACE_STYLES)) {
+                s.surfaceStyle[0] = surfaceValue.get();
+            }
+
+            ImGui.sliderFloat("Metallic", s.metallic, 0.0f, 1.0f);
+            ImGui.sliderFloat("Roughness", s.roughness, 0.0f, 1.0f);
+            ImGui.sliderFloat("Iridescence", s.iridescence, 0.0f, 1.0f);
+            ImGui.sliderFloat("Surface pattern scale", s.surfaceScale, 0.10f, 5.0f);
             ImGui.sliderFloat("Ambient", s.ambient, 0.0f, 1.0f);
             ImGui.sliderFloat("Light intensity", s.lightIntensity, 0.0f, 3.0f);
             ImGui.sliderFloat("Specular strength", s.specularStrength, 0.0f, 4.0f);
-            ImGui.sliderFloat("Specular sharpness", s.specularPower, 2.0f, 256.0f);
+            ImGui.sliderFloat("Base specular sharpness", s.specularPower, 2.0f, 256.0f);
             ImGui.sliderFloat("Fresnel edge glow", s.fresnelStrength, 0.0f, 4.0f);
             ImGui.sliderFloat("Emission", s.emission, 0.0f, 1.5f);
             ImGui.sliderFloat("Internal band scale", s.bandScale, 0.5f, 60.0f);
@@ -136,31 +185,6 @@ public final class GardenControlPanel {
             ImGui.sliderFloat("Move speed", s.cameraSpeed, 0.5f, 40.0f);
             ImGui.sliderFloat("Shift speed", s.cameraBoost, 1.0f, 100.0f);
             ImGui.sliderFloat("Mouse sensitivity", s.mouseSensitivity, 0.0002f, 0.0100f, "%.4f");
-        }
-
-        if (ImGui.collapsingHeader("Presets")) {
-            if (ImGui.button("Needle Forest")) {
-                s.applyPreset(0);
-                regenerate = true;
-            }
-            ImGui.sameLine();
-            if (ImGui.button("Amethyst Cathedral")) {
-                s.applyPreset(1);
-                regenerate = true;
-            }
-            if (ImGui.button("Alien Reef")) {
-                s.applyPreset(2);
-                regenerate = true;
-            }
-            ImGui.sameLine();
-            if (ImGui.button("Crystal Storm")) {
-                s.applyPreset(3);
-                regenerate = true;
-            }
-            if (ImGui.button("Obsidian Spires")) {
-                s.applyPreset(4);
-                regenerate = true;
-            }
         }
 
         ImGui.separator();
