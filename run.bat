@@ -16,8 +16,9 @@ set "_JAVA_OPTIONS="
 set "JDK_JAVA_OPTIONS="
 set "CLASSPATH="
 
-where java >nul 2>&1
-if errorlevel 1 (
+set "JAVA_EXE="
+for /f "delims=" %%J in ('where java 2^>nul') do if not defined JAVA_EXE set "JAVA_EXE=%%J"
+if not defined JAVA_EXE (
     echo ERROR: Java was not found in PATH.
     echo Install JDK 21 and make sure java.exe is available from Command Prompt.
     echo.
@@ -25,11 +26,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
-java -version >nul 2>&1
+"%JAVA_EXE%" -version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Java exists, but failed to start.
-    where java
-    java -version
+    echo Java: %JAVA_EXE%
+    "%JAVA_EXE%" -version
     echo.
     pause
     exit /b 1
@@ -39,12 +40,11 @@ set "GRADLE_VERSION=8.14.3"
 set "LOCAL_GRADLE_ROOT=%~dp0.gradle\portable"
 set "LOCAL_GRADLE_HOME=%~dp0.gradle\portable\gradle-%GRADLE_VERSION%"
 set "LOCAL_GRADLE_ZIP=%~dp0.gradle\portable\gradle-%GRADLE_VERSION%-bin.zip"
-set "GRADLE_CMD=%LOCAL_GRADLE_HOME%\bin\gradle.bat"
+set "GRADLE_CLI_JAR=%LOCAL_GRADLE_HOME%\lib\gradle-gradle-cli-main-%GRADLE_VERSION%.jar"
+set "GRADLE_AGENT_JAR=%LOCAL_GRADLE_HOME%\lib\agents\gradle-instrumentation-agent-%GRADLE_VERSION%.jar"
 
-if not exist "%GRADLE_CMD%" goto :download_gradle
-goto :patch_gradle
+if exist "%GRADLE_CLI_JAR%" if exist "%GRADLE_AGENT_JAR%" goto :gradle_ready
 
-:download_gradle
 echo Gradle %GRADLE_VERSION% is not cached yet.
 echo Downloading a portable copy for this project...
 echo This only happens on the first run.
@@ -67,34 +67,32 @@ if errorlevel 1 (
     exit /b 1
 )
 
-if not exist "%GRADLE_CMD%" (
-    echo ERROR: Gradle downloaded, but gradle.bat was not found:
-    echo %GRADLE_CMD%
+if not exist "%GRADLE_CLI_JAR%" (
+    echo ERROR: Gradle downloaded, but its CLI JAR was not found:
+    echo %GRADLE_CLI_JAR%
+    pause
+    exit /b 1
+)
+if not exist "%GRADLE_AGENT_JAR%" (
+    echo ERROR: Gradle downloaded, but its instrumentation agent was not found:
+    echo %GRADLE_AGENT_JAR%
     pause
     exit /b 1
 )
 
-:patch_gradle
-rem Gradle 8.14.x generated Windows launchers can contain both
-rem -classpath "%%CLASSPATH%%" and -jar. Because the distribution launcher
-rem clears CLASSPATH internally, Java receives an empty classpath and exits.
-rem Patch only our project-local Gradle copy by removing that redundant switch.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $p=$env:GRADLE_CMD; $text=[IO.File]::ReadAllText($p); $pct=[string][char]37; $needle='-classpath "' + $pct + 'CLASSPATH' + $pct + '" -jar'; if($text.Contains($needle)){ $text=$text.Replace($needle,'-jar'); [IO.File]::WriteAllText($p,$text,[Text.Encoding]::ASCII); Write-Host 'Patched Gradle 8.14.3 Windows launcher.' }"
-if errorlevel 1 (
-    echo ERROR: Could not patch the local Gradle launcher.
-    pause
-    exit /b 1
-)
-
+:gradle_ready
 echo Java check: OK
-echo Gradle: %GRADLE_CMD%
-echo Checking Gradle launcher...
-call "%GRADLE_CMD%" --version >nul 2>&1
+echo Java: %JAVA_EXE%
+echo Gradle home: %LOCAL_GRADLE_HOME%
+echo Launcher mode: direct Java/JAR ^(bypasses broken gradle.bat^)
+echo Checking Gradle...
+call :run_gradle --version >nul 2>&1
 if errorlevel 1 (
     echo.
-    echo ERROR: The Gradle launcher still cannot start.
-    echo Relevant lines from gradle.bat:
-    findstr /n /i "classpath jar" "%GRADLE_CMD%"
+    echo ERROR: Gradle still cannot start even with gradle.bat bypassed.
+    echo Running the Gradle version check visibly for diagnostics:
+    echo.
+    call :run_gradle --version
     echo.
     pause
     exit /b 1
@@ -103,7 +101,7 @@ echo Gradle check: OK
 echo.
 
 echo [1/2] Compiling...
-call "%GRADLE_CMD%" --no-daemon classes
+call :run_gradle --no-daemon classes
 if errorlevel 1 (
     echo.
     echo BUILD FAILED.
@@ -115,7 +113,7 @@ if errorlevel 1 (
 echo.
 echo [2/2] Launching CrystalGardenGPU...
 echo.
-call "%GRADLE_CMD%" --no-daemon run
+call :run_gradle --no-daemon run
 set "EXIT_CODE=%ERRORLEVEL%"
 
 if not "%EXIT_CODE%"=="0" (
@@ -125,3 +123,7 @@ if not "%EXIT_CODE%"=="0" (
 )
 
 exit /b %EXIT_CODE%
+
+:run_gradle
+"%JAVA_EXE%" -Xmx64m -Xms64m "-javaagent:%GRADLE_AGENT_JAR%" "-Dorg.gradle.appname=gradle" -jar "%GRADLE_CLI_JAR%" %*
+exit /b %ERRORLEVEL%
