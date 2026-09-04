@@ -36,7 +36,7 @@ public final class GardenControlPanel {
             ImGui.checkbox("Auto new garden", s.autoRegenerate);
             ImGui.sliderFloat("Auto regen seconds", s.autoRegenerateSeconds, 1.0f, 60.0f);
             ImGui.checkbox("Pause growth", s.pauseGrowth);
-            ImGui.textWrapped("R = new seed, G = regrow same seed, Tab = toggle this panel, Esc = release/capture mouse.");
+            ImGui.textWrapped("R = new seed, G = regrow same seed, F1 = randomize all, Tab = toggle this panel, Esc = release/capture mouse.");
         }
 
         if (ImGui.collapsingHeader("Population / Distribution")) {
@@ -71,6 +71,11 @@ public final class GardenControlPanel {
             ImGui.sliderFloat("Field bend", s.bend, 0.0f, 1.0f);
             ImGui.sliderFloat("Living sway", s.motionStrength, 0.0f, 0.50f);
             ImGui.sliderFloat("Sway speed", s.motionSpeed, 0.0f, 5.0f);
+            ImGui.separator();
+            ImGui.sliderInt("Shards per crystal cluster", s.shardsPerCluster, 1, GardenSettings.MAX_SHARDS_PER_CLUSTER);
+            ImGui.sliderFloat("Satellite spread", s.shardSpread, 0.0f, 7.0f);
+            ImGui.sliderFloat("Satellite size", s.shardScale, 0.1f, 1.2f);
+            ImGui.sliderFloat("Satellite outward lean", s.shardLean, 0.0f, 1.5f);
         }
 
         if (ImGui.collapsingHeader("Mineral Field / Colors")) {
