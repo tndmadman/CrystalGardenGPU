@@ -1,16 +1,16 @@
 # CrystalGardenGPU
 
-Real-time procedural 3D crystal art generated on the GPU with Java, LWJGL, OpenGL 4.6, GLSL compute shaders, and an in-app Dear ImGui control lab.
+Real-time procedural 3D mineral/crystal art generated on the GPU with Java, LWJGL, OpenGL 4.6, GLSL compute shaders, and an in-app Dear ImGui control lab.
 
 ## Goal
 
-Build a living mathematical crystal garden where placement, growth, geometry, motion, color, atmosphere, and cluster structure emerge from deterministic GPU-side rules rather than authored 3D models.
+Build a living mathematical mineral garden where placement, growth, geometry, surface structure, color, atmosphere, and cluster habit emerge from deterministic GPU-side rules rather than authored 3D models.
 
 ## Current procedural lab
 
-The renderer supports up to **65,536 GPU-resident crystal bases**. Each base can render from one to five procedurally generated shards, so a garden can range from a clean field of single crystals to dense leaning multi-shard clusters. There are no authored crystal meshes: the vertex shader synthesizes the geometry from `gl_VertexID` while the compute shader owns generation and growth state in an SSBO.
+The renderer supports up to **65,536 GPU-resident crystal bases**. Each base can render from one to eight procedurally generated shards. There are no authored crystal meshes: the vertex shader synthesizes every formation from `gl_VertexID`, while the compute shader owns generation and growth state in an SSBO.
 
-An in-app **Crystal Garden Lab** panel exposes the generator live. Most visual/material controls apply immediately, while generator controls can automatically regrow the garden when changed.
+The app starts in **Quartz Cathedral** and exposes a live **Crystal Garden Lab** panel. Mineral presets set realistic-inspired crystal habits, cluster behavior, palette, surface style, and material response, while every underlying parameter remains editable afterward.
 
 ### Controls
 
@@ -25,40 +25,73 @@ An in-app **Crystal Garden Lab** panel exposes the generator live. Most visual/m
 - `F1` — randomize the procedural settings and seed
 - Exit with the **Exit Application** button, the window close button, or `Alt+F4`
 
-### Live settings
+## Twenty mineral formations
 
-The panel currently exposes:
+1. Quartz Cathedral
+2. Amethyst Geode
+3. Citrine Spires
+4. Smoky Quartz Field
+5. Emerald Pocket
+6. Aquamarine Columns
+7. Tourmaline Grove
+8. Ruby Corundum Cluster
+9. Sapphire Corundum Cluster
+10. Fluorite Cubes
+11. Galena Blocks
+12. Pyrite Citadel
+13. Bismuth Hopper Towers
+14. Selenite Blades
+15. Kyanite Fans
+16. Stibnite Needle Spray
+17. Aragonite Starburst
+18. Calcite Dogtooth Cluster
+19. Sulfur Bipyramids
+20. Native Copper Dendrites
 
+These are not only palette swaps. The GPU renderer now has ten formation families:
+
+- prismatic
+- needle
+- blade
+- cubic
+- hopper / terraced
+- scalenohedron / dogtooth
+- bipyramid
+- radial starburst
+- bladed fan
+- dendritic branching
+
+It also has six surface families: smooth/glassy, striated, stepped/terraced, metallic, banded/zoned, and iridescent.
+
+## Live settings
+
+The panel exposes:
+
+- mineral preset selection and descriptions
 - seed, same-seed regrow, new garden, randomize everything
 - live regeneration, automatic timed regeneration, pause growth
 - crystal count from 256 to 65,536
 - Grid, Radial, Spiral, and Cluster distributions
 - spacing, placement jitter, sparsity, cluster count/radius, spiral turns
 - minimum/maximum radius and height
-- height distribution curve, growth-speed range, live growth multiplier, growth pulse
+- height distribution curve, growth-speed range, multiplier, growth pulse
+- formation geometry selection
 - polygon sides from 3 to 12
-- taper, tip ratio, twist, random tilt, field bend
-- animated living sway and sway speed
-- 1–5 shards per crystal cluster
-- satellite-shard spread, size, and outward lean
+- taper, tip ratio, twist, random tilt, field bend, animated sway
+- 1–8 shards per crystal base, satellite spread/size/lean
+- blade thickness
+- 1–4 hopper steps and hopper inset
+- bipyramid/scalenohedron waist position
+- dendrite branch levels and branch angle
+- starburst/fan radial force
+- formation irregularity
 - mineral-field scale, domain warp, contrast
-- three editable palette colors, third-color mixing, per-crystal color variation
-- ambient and directional lighting
-- specular strength/sharpness, Fresnel edge glow, emission
+- three editable palette colors and per-crystal color variation
+- surface structure, metallic response, roughness, iridescence, pattern scale
+- ambient/directional lighting, specular response, Fresnel edge glow, emission
 - internal crystal banding
 - fog density/color/maximum and exposure
-- live light direction
-- camera FOV, move speed, boost speed, and mouse sensitivity
-
-### Presets
-
-Built-in starting points include:
-
-- Needle Forest
-- Amethyst Cathedral
-- Alien Reef
-- Crystal Storm
-- Obsidian Spires
+- camera FOV, move speed, boost speed, mouse sensitivity
 
 ## Stack
 
@@ -88,7 +121,7 @@ A GPU/driver exposing OpenGL 4.6 is required. The primary development target is 
 Java / GLFW / Dear ImGui
   ├─ window + input
   ├─ free-fly camera
-  ├─ live settings / presets
+  ├─ live settings + 20 mineral presets
   ├─ regeneration lifecycle
   └─ renderer orchestration
           │
@@ -102,24 +135,25 @@ OpenGL 4.6
   │    └─ animated growth → SSBO
   │
   └─ Instanced renderer
-       ├─ 3–12 sided procedural shard geometry
+       ├─ 10 procedural geometry families
+       ├─ 1–8 shards per base
        ├─ twist / tilt / bend / sway
-       ├─ multi-shard crystal clusters
-       └─ live material / lighting / fog shading
+       ├─ metallic / rough / iridescent surface models
+       └─ live lighting / fog / exposure
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the underlying state layout and frame flow.
 
 ## Next complexity milestones
 
-1. GPU segment-pool branching with configurable n-fold symmetry
-2. true Voronoi mineral territories and curl/simplex vector fields
+1. true recursive GPU segment-pool branching with configurable n-fold symmetry
+2. Voronoi mineral territories and curl/simplex vector fields
 3. crystal competition / spatial collision and growth-resource depletion
 4. procedural terrain/substrate driven by the same mineral fields
 5. HDR framebuffer, bloom, translucency, absorption, and refraction approximations
 6. reaction-diffusion nucleation maps
 7. GPU indirect draw/culling and LOD for much larger scenes
-8. optional ray-marched/SDF crystal species
+8. optional ray-marched/SDF hero crystals
 
 ## Why OpenGL first?
 
