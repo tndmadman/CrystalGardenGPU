@@ -9,8 +9,7 @@ import static org.lwjgl.opengl.GL46.*;
 
 public final class CrystalGarden implements AutoCloseable {
     private static final int CRYSTAL_STRIDE_BYTES = 48;
-    private static final int MAX_SIDES = 12;
-    private static final int VERTICES_PER_SHARD = MAX_SIDES * 9;
+    private static final int VERTICES_PER_SHARD = 144;
 
     private final ShaderProgram computeShader;
     private final ShaderProgram renderShader;
@@ -103,6 +102,8 @@ public final class CrystalGarden implements AutoCloseable {
         renderShader.setFloat("uTime", timeSeconds);
         renderShader.setUnsignedInt("uSeed", s.seed[0]);
 
+        renderShader.setInt("uFormationType", s.formationType[0]);
+        renderShader.setInt("uSurfaceStyle", s.surfaceStyle[0]);
         renderShader.setInt("uSides", s.sides[0]);
         renderShader.setFloat("uTaper", s.taper[0]);
         renderShader.setFloat("uTipRatio", s.tipRatio[0]);
@@ -115,6 +116,14 @@ public final class CrystalGarden implements AutoCloseable {
         renderShader.setFloat("uShardSpread", s.shardSpread[0]);
         renderShader.setFloat("uShardScale", s.shardScale[0]);
         renderShader.setFloat("uShardLean", s.shardLean[0]);
+        renderShader.setFloat("uBladeThickness", s.bladeThickness[0]);
+        renderShader.setInt("uHopperSteps", s.hopperSteps[0]);
+        renderShader.setFloat("uHopperInset", s.hopperInset[0]);
+        renderShader.setFloat("uBipyramidWaist", s.bipyramidWaist[0]);
+        renderShader.setInt("uDendriteBranches", s.dendriteBranches[0]);
+        renderShader.setFloat("uDendriteAngle", s.dendriteAngle[0]);
+        renderShader.setFloat("uRadialStrength", s.radialStrength[0]);
+        renderShader.setFloat("uFormationIrregularity", s.formationIrregularity[0]);
 
         renderShader.setFloat("uAmbient", s.ambient[0]);
         renderShader.setFloat("uLightIntensity", s.lightIntensity[0]);
@@ -124,6 +133,10 @@ public final class CrystalGarden implements AutoCloseable {
         renderShader.setFloat("uEmission", s.emission[0]);
         renderShader.setFloat("uBandScale", s.bandScale[0]);
         renderShader.setFloat("uBandStrength", s.bandStrength[0]);
+        renderShader.setFloat("uMetallic", s.metallic[0]);
+        renderShader.setFloat("uRoughness", s.roughness[0]);
+        renderShader.setFloat("uIridescence", s.iridescence[0]);
+        renderShader.setFloat("uSurfaceScale", s.surfaceScale[0]);
         renderShader.setFloat("uFogDensity", s.fogDensity[0]);
         renderShader.setFloat("uFogMax", s.fogMax[0]);
         renderShader.setFloat("uExposure", s.exposure[0]);
