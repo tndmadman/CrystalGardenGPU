@@ -21,6 +21,10 @@ uniform float uTilt;
 uniform float uBend;
 uniform float uMotionStrength;
 uniform float uMotionSpeed;
+uniform int uShardCount;
+uniform float uShardSpread;
+uniform float uShardScale;
+uniform float uShardLean;
 
 out vec3 vWorldPos;
 out vec3 vNormal;
@@ -30,6 +34,7 @@ out float vHeightRatio;
 const float PI = 3.14159265358979323846;
 const int MAX_SIDES = 12;
 const int BODY_VERTICES = MAX_SIDES * 6;
+const int VERTICES_PER_SHARD = MAX_SIDES * 9;
 
 uint hash(uint x) {
     x += x << 10u;
@@ -48,10 +53,11 @@ vec3 ringPoint(float angle, float y, float radius) {
     return vec3(cos(angle) * radius, y, sin(angle) * radius);
 }
 
-vec3 deform(vec3 localPos, Crystal c, uint instanceId) {
+vec3 deform(vec3 localPos, Crystal c, uint instanceId, int shard, vec2 shardDir, float shardLean) {
     float height = max(c.positionHeight.w, 0.001);
-    float y = clamp(localPos.y / height, 0.0, 1.0);
-    float seedAngle = rand01(instanceId * 131u + 17u) * 2.0 * PI;
+    float y = clamp(localPos.y / max(height, 0.001), 0.0, 1.0);
+    uint shardSalt = uint(shard) * 977u;
+    float seedAngle = rand01(instanceId * 131u + 17u + shardSalt) * 2.0 * PI;
     vec2 tiltDir = vec2(cos(seedAngle), sin(seedAngle));
 
     vec2 staticTilt = tiltDir * (uTilt * height * 0.18 * y);
@@ -61,35 +67,68 @@ vec3 deform(vec3 localPos, Crystal c, uint instanceId) {
     vec2 bendDir = vec2(cos(fieldAngle * PI), sin(fieldAngle * PI));
     vec2 fieldBend = bendDir * (uBend * height * 0.22 * y * y);
 
-    float motionPhase = rand01(instanceId * 197u + 61u) * 2.0 * PI;
+    float motionPhase = rand01(instanceId * 197u + 61u + shardSalt) * 2.0 * PI;
     vec2 motionDir = vec2(cos(seedAngle + 1.7), sin(seedAngle + 1.7));
     float sway = sin(uTime * uMotionSpeed + motionPhase + y * 2.3);
     vec2 liveMotion = motionDir * (sway * uMotionStrength * height * 0.14 * y * y);
 
-    localPos.xz += staticTilt + fieldBend + liveMotion;
+    vec2 satelliteLean = shardDir * shardLean * localPos.y * 0.42;
+    localPos.xz += staticTilt + fieldBend + liveMotion + satelliteLean;
     return localPos;
 }
 
 void main() {
     Crystal c = crystals[gl_InstanceID];
     uint instanceId = uint(gl_InstanceID);
+    int shard = gl_VertexID / VERTICES_PER_SHARD;
+    int vertexId = gl_VertexID - shard * VERTICES_PER_SHARD;
     int sides = clamp(uSides, 3, MAX_SIDES);
-    float height = max(c.positionHeight.w, 0.001);
-    float radius = max(c.params.x, 0.00001);
+
+    float baseHeight = max(c.positionHeight.w, 0.001);
+    float baseRadius = max(c.params.x, 0.00001);
+    float height = baseHeight;
+    float radius = baseRadius;
+    vec2 shardOffset = vec2(0.0);
+    vec2 shardDir = vec2(0.0);
+    float satelliteLean = 0.0;
+    float shardColorScale = 1.0;
+
+    if (shard > 0) {
+        uint salt = uint(shard) * 733u;
+        float r0 = rand01(instanceId * 173u + 31u + salt);
+        float r1 = rand01(instanceId * 211u + 47u + salt);
+        int satellites = max(uShardCount - 1, 1);
+        float angle = (float(shard - 1) / float(satellites)) * 2.0 * PI;
+        angle += (r0 - 0.5) * 0.85;
+        shardDir = vec2(cos(angle), sin(angle));
+
+        float spread = baseRadius * uShardSpread * mix(0.72, 1.28, r1);
+        shardOffset = shardDir * spread;
+
+        float scale = max(0.05, uShardScale) * mix(0.55, 1.0, r0);
+        height = baseHeight * scale;
+        radius = baseRadius * max(0.08, uShardScale) * mix(0.45, 0.82, r1);
+        satelliteLean = uShardLean * mix(0.55, 1.15, r1);
+        shardColorScale = mix(0.78, 1.18, r0);
+    }
+
     float tipRatio = clamp(uTipRatio, 0.02, 0.90);
     float shoulderY = height * (1.0 - tipRatio);
     float shoulderRadius = radius * max(0.02, uTaper);
-    float baseRotation = rand01(instanceId * 89u + 7u) * 2.0 * PI;
+    float baseRotation = rand01(instanceId * 89u + 7u + uint(shard) * 313u) * 2.0 * PI;
     float twist = uTwistTurns * 2.0 * PI;
+    if (shard > 0) {
+        twist += (rand01(instanceId * 251u + uint(shard) * 101u) - 0.5) * PI * 0.35;
+    }
     float step = 2.0 * PI / float(sides);
 
     vec3 localPos = vec3(0.0);
     vec3 normal = vec3(0.0, 1.0, 0.0);
     int face;
 
-    if (gl_VertexID < BODY_VERTICES) {
-        face = gl_VertexID / 6;
-        int corner = gl_VertexID % 6;
+    if (vertexId < BODY_VERTICES) {
+        face = vertexId / 6;
+        int corner = vertexId % 6;
 
         if (face < sides) {
             float a0b = baseRotation + float(face) * step;
@@ -114,7 +153,7 @@ void main() {
             normal = normalize(vec3(cos(mid), taperSlope, sin(mid)));
         }
     } else {
-        int localId = gl_VertexID - BODY_VERTICES;
+        int localId = vertexId - BODY_VERTICES;
         face = localId / 3;
         int corner = localId % 3;
 
@@ -133,19 +172,23 @@ void main() {
         }
     }
 
-    // Faces above the selected side count collapse into degenerate triangles.
     if (face >= sides) {
         localPos = vec3(0.0);
         normal = vec3(0.0, 1.0, 0.0);
     }
 
-    localPos = deform(localPos, c, instanceId);
-    vec3 worldPos = c.positionHeight.xyz + localPos;
+    localPos.xz += shardOffset;
+    localPos = deform(localPos, c, instanceId, shard, shardDir, satelliteLean);
 
+    if (shard > 0) {
+        normal = normalize(normal + vec3(-shardDir.x * satelliteLean * 0.18, 0.0, -shardDir.y * satelliteLean * 0.18));
+    }
+
+    vec3 worldPos = c.positionHeight.xyz + localPos;
     vWorldPos = worldPos;
     vNormal = normal;
-    vColor = c.color.rgb;
-    vHeightRatio = clamp(height / max(c.params.w, 0.001), 0.0, 1.0);
+    vColor = c.color.rgb * shardColorScale;
+    vHeightRatio = clamp(baseHeight / max(c.params.w, 0.001), 0.0, 1.0);
 
     gl_Position = uViewProjection * vec4(worldPos, 1.0);
 }
