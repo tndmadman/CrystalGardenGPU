@@ -4,6 +4,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class GardenSettings {
     public static final int MAX_CRYSTALS = 65_536;
+    public static final int MAX_SHARDS_PER_CLUSTER = 5;
     public static final String[] DISTRIBUTIONS = {"Grid", "Radial", "Spiral", "Clusters"};
 
     // Generation / lifecycle
@@ -43,6 +44,10 @@ public final class GardenSettings {
     public final float[] bend = {0.0f};
     public final float[] motionStrength = {0.0f};
     public final float[] motionSpeed = {0.65f};
+    public final int[] shardsPerCluster = {1};
+    public final float[] shardSpread = {2.2f};
+    public final float[] shardScale = {0.62f};
+    public final float[] shardLean = {0.42f};
 
     // Mineral field / palette
     public final float[] mineralScale = {0.23f};
@@ -109,6 +114,10 @@ public final class GardenSettings {
         bend[0] = r.nextFloat(0.0f, 0.55f);
         motionStrength[0] = r.nextFloat(0.0f, 0.18f);
         motionSpeed[0] = r.nextFloat(0.15f, 2.2f);
+        shardsPerCluster[0] = r.nextInt(1, MAX_SHARDS_PER_CLUSTER + 1);
+        shardSpread[0] = r.nextFloat(0.8f, 4.8f);
+        shardScale[0] = r.nextFloat(0.28f, 0.88f);
+        shardLean[0] = r.nextFloat(0.05f, 0.9f);
 
         mineralScale[0] = r.nextFloat(0.05f, 0.65f);
         mineralWarp[0] = r.nextFloat(0.0f, 3.5f);
@@ -131,7 +140,7 @@ public final class GardenSettings {
         switch (preset) {
             case 0 -> { // Needle Forest
                 distribution[0] = 0;
-                activeCount[0] = 36_000;
+                activeCount[0] = 30_000;
                 sparsity[0] = 0.08f;
                 minRadius[0] = 0.025f;
                 maxRadius[0] = 0.09f;
@@ -143,13 +152,17 @@ public final class GardenSettings {
                 tipRatio[0] = 0.27f;
                 tilt[0] = 0.08f;
                 bend[0] = 0.03f;
+                shardsPerCluster[0] = 2;
+                shardSpread[0] = 1.4f;
+                shardScale[0] = 0.42f;
+                shardLean[0] = 0.16f;
                 setColor(paletteA, 0.02f, 0.38f, 0.90f);
                 setColor(paletteB, 0.12f, 0.78f, 1.00f);
                 setColor(paletteC, 0.68f, 0.12f, 0.95f);
             }
             case 1 -> { // Amethyst Cathedral
                 distribution[0] = 3;
-                activeCount[0] = 22_000;
+                activeCount[0] = 18_000;
                 clusterCount[0] = 10;
                 clusterRadius[0] = 3.2f;
                 sparsity[0] = 0.18f;
@@ -161,6 +174,10 @@ public final class GardenSettings {
                 taper[0] = 0.78f;
                 tipRatio[0] = 0.24f;
                 twistTurns[0] = 0.05f;
+                shardsPerCluster[0] = 4;
+                shardSpread[0] = 2.6f;
+                shardScale[0] = 0.68f;
+                shardLean[0] = 0.52f;
                 setColor(paletteA, 0.18f, 0.05f, 0.40f);
                 setColor(paletteB, 0.72f, 0.18f, 1.00f);
                 setColor(paletteC, 0.96f, 0.52f, 1.00f);
@@ -169,7 +186,7 @@ public final class GardenSettings {
             }
             case 2 -> { // Alien Reef
                 distribution[0] = 1;
-                activeCount[0] = 28_000;
+                activeCount[0] = 22_000;
                 sparsity[0] = 0.24f;
                 minHeight[0] = 0.25f;
                 maxHeight[0] = 5.5f;
@@ -179,6 +196,10 @@ public final class GardenSettings {
                 bend[0] = 0.42f;
                 motionStrength[0] = 0.10f;
                 motionSpeed[0] = 0.7f;
+                shardsPerCluster[0] = 5;
+                shardSpread[0] = 3.5f;
+                shardScale[0] = 0.72f;
+                shardLean[0] = 0.85f;
                 mineralWarp[0] = 2.4f;
                 setColor(paletteA, 0.00f, 0.95f, 0.52f);
                 setColor(paletteB, 0.08f, 0.38f, 1.00f);
@@ -187,7 +208,7 @@ public final class GardenSettings {
             }
             case 3 -> { // Crystal Storm
                 distribution[0] = 2;
-                activeCount[0] = 42_000;
+                activeCount[0] = 28_000;
                 spiralTurns[0] = 18.0f;
                 sparsity[0] = 0.08f;
                 minRadius[0] = 0.035f;
@@ -200,13 +221,17 @@ public final class GardenSettings {
                 bend[0] = 0.30f;
                 motionStrength[0] = 0.16f;
                 motionSpeed[0] = 1.4f;
+                shardsPerCluster[0] = 3;
+                shardSpread[0] = 2.0f;
+                shardScale[0] = 0.50f;
+                shardLean[0] = 0.70f;
                 setColor(paletteA, 0.02f, 0.55f, 1.00f);
                 setColor(paletteB, 0.82f, 0.08f, 1.00f);
                 setColor(paletteC, 0.08f, 1.00f, 0.82f);
             }
             case 4 -> { // Obsidian Spires
                 distribution[0] = 3;
-                activeCount[0] = 14_000;
+                activeCount[0] = 12_000;
                 clusterCount[0] = 8;
                 clusterRadius[0] = 4.5f;
                 minRadius[0] = 0.09f;
@@ -216,6 +241,10 @@ public final class GardenSettings {
                 sides[0] = 8;
                 taper[0] = 0.72f;
                 tipRatio[0] = 0.35f;
+                shardsPerCluster[0] = 3;
+                shardSpread[0] = 2.8f;
+                shardScale[0] = 0.58f;
+                shardLean[0] = 0.32f;
                 setColor(paletteA, 0.008f, 0.012f, 0.025f);
                 setColor(paletteB, 0.05f, 0.07f, 0.13f);
                 setColor(paletteC, 0.30f, 0.04f, 0.46f);
@@ -232,6 +261,7 @@ public final class GardenSettings {
         activeCount[0] = Math.max(256, Math.min(MAX_CRYSTALS, activeCount[0]));
         sides[0] = Math.max(3, Math.min(12, sides[0]));
         clusterCount[0] = Math.max(1, Math.min(64, clusterCount[0]));
+        shardsPerCluster[0] = Math.max(1, Math.min(MAX_SHARDS_PER_CLUSTER, shardsPerCluster[0]));
         maxRadius[0] = Math.max(minRadius[0], maxRadius[0]);
         maxHeight[0] = Math.max(minHeight[0], maxHeight[0]);
         growthMax[0] = Math.max(growthMin[0], growthMax[0]);
