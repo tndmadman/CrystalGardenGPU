@@ -28,8 +28,28 @@ for /f "delims=" %%J in ('where javac 2^>nul') do if not defined JAVAC_EXE set "
 if defined JAVAC_EXE (
     for /f "tokens=2" %%V in ('"!JAVAC_EXE!" -version 2^>^&1') do if not defined JAVAC_VERSION set "JAVAC_VERSION=%%V"
     if "!JAVAC_VERSION:~0,2!"=="20" (
-        for %%D in ("!JAVAC_EXE!\..\..") do set "JAVA_HOME=%%~fD"
-        set "JAVA_EXE=!JAVA_HOME!\bin\java.exe"
+        rem Do not derive JAVA_HOME from the javac.exe path because Oracle may
+        rem expose javac through a Common Files shim. Ask the JVM for its real
+        rem home instead; this resolves to the actual JDK installation.
+        for /f "tokens=1,* delims==" %%A in ('"!JAVAC_EXE!" -J-XshowSettings:properties -version 2^>^&1 ^| findstr /c:"java.home ="') do (
+            set "JAVA_HOME=%%B"
+        )
+        if defined JAVA_HOME for /f "tokens=*" %%H in ("!JAVA_HOME!") do set "JAVA_HOME=%%H"
+        if defined JAVA_HOME set "JAVA_EXE=!JAVA_HOME!\bin\java.exe"
+
+        if not exist "!JAVA_EXE!" (
+            set "JAVA_HOME="
+            set "JAVA_EXE="
+            set "JAVAC_EXE="
+            set "JAVAC_VERSION="
+        ) else if not exist "!JAVA_HOME!\bin\javac.exe" (
+            set "JAVA_HOME="
+            set "JAVA_EXE="
+            set "JAVAC_EXE="
+            set "JAVAC_VERSION="
+        ) else (
+            set "JAVAC_EXE=!JAVA_HOME!\bin\javac.exe"
+        )
     ) else (
         set "JAVAC_EXE="
         set "JAVAC_VERSION="
@@ -103,6 +123,13 @@ if not "!JAVAC_VERSION:~0,2!"=="20" (
     exit /b 1
 )
 
+if not exist "!JAVA_EXE!" (
+    echo ERROR: Could not find java.exe in resolved JDK home:
+    echo !JAVA_HOME!
+    pause
+    exit /b 1
+)
+
 set "PATH=!JAVA_HOME!\bin;%PATH%"
 
 rem ---------------------------------------------------------------------------
@@ -129,12 +156,14 @@ if errorlevel 1 (
 
 :gradle_ready
 echo JDK check: OK ^(javac !JAVAC_VERSION!^)
+echo JDK home: !JAVA_HOME!
 echo Java: !JAVA_EXE!
 echo Gradle home: !LOCAL_GRADLE_HOME!
 echo Checking Gradle...
 call :run_gradle --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Gradle cannot start with JDK 20.
+    echo Running Gradle version check visibly:
     call :run_gradle --version
     pause
     exit /b 1
