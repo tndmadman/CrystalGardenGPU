@@ -8,10 +8,34 @@ echo   CrystalGardenGPU - Compile and Run
 echo ========================================
 echo.
 
+rem Isolate this project from machine-wide Java/Gradle flags that can inject
+rem malformed options such as a bare -classpath into every Java process.
+set "JAVA_OPTS="
+set "GRADLE_OPTS="
+set "JAVA_TOOL_OPTIONS="
+set "_JAVA_OPTIONS="
+set "JDK_JAVA_OPTIONS="
+set "CLASSPATH="
+
 where java >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Java was not found in PATH.
     echo Install JDK 21 and make sure java.exe is available from Command Prompt.
+    echo.
+    pause
+    exit /b 1
+)
+
+rem Verify Java itself can launch before involving Gradle.
+java -version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Java exists, but Java itself failed to start.
+    echo.
+    echo Java executable:
+    where java
+    echo.
+    echo Running java -version for diagnostics:
+    java -version
     echo.
     pause
     exit /b 1
@@ -24,7 +48,6 @@ if exist "%~dp0gradlew.bat" (
 )
 
 rem Otherwise use a project-local portable Gradle installation.
-rem This keeps run.bat one-click and does not require a system Gradle install.
 set "GRADLE_VERSION=8.14.3"
 set "LOCAL_GRADLE_ROOT=%~dp0.gradle\portable"
 set "LOCAL_GRADLE_HOME=%~dp0.gradle\portable\gradle-%GRADLE_VERSION%"
@@ -69,11 +92,21 @@ if not exist "%GRADLE_CMD%" (
 )
 
 :gradle_ready
+echo Java check: OK
+echo Gradle: %GRADLE_CMD%
+echo.
+
 echo [1/2] Compiling...
-call "%GRADLE_CMD%" classes
+call "%GRADLE_CMD%" --no-daemon classes
 if errorlevel 1 (
     echo.
     echo BUILD FAILED.
+    echo.
+    echo If the first error above still mentions -classpath, run these commands
+    echo in Command Prompt and send me the output:
+    echo   where java
+    echo   java -version
+    echo.
     pause
     exit /b 1
 )
@@ -81,7 +114,7 @@ if errorlevel 1 (
 echo.
 echo [2/2] Launching CrystalGardenGPU...
 echo.
-call "%GRADLE_CMD%" run
+call "%GRADLE_CMD%" --no-daemon run
 set "EXIT_CODE=%ERRORLEVEL%"
 
 if not "%EXIT_CODE%"=="0" (
