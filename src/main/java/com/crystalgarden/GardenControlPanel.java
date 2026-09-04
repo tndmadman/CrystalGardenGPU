@@ -1,6 +1,8 @@
 package com.crystalgarden;
 
 import imgui.ImGui;
+import imgui.type.ImBoolean;
+import imgui.type.ImInt;
 
 public final class GardenControlPanel {
     public record Actions(boolean regenerate, boolean exitRequested) {
@@ -31,17 +33,41 @@ public final class GardenControlPanel {
         }
 
         if (ImGui.collapsingHeader("Lifecycle / Live Generation")) {
-            if (ImGui.inputInt("Seed", s.seed)) generationChanged = true;
-            ImGui.checkbox("Live regenerate on generator changes", s.liveRegenerate);
-            ImGui.checkbox("Auto new garden", s.autoRegenerate);
+            ImInt seedValue = new ImInt(s.seed[0]);
+            if (ImGui.inputInt("Seed", seedValue)) {
+                s.seed[0] = seedValue.get();
+                generationChanged = true;
+            }
+
+            ImBoolean liveRegenerateValue = new ImBoolean(s.liveRegenerate[0]);
+            if (ImGui.checkbox("Live regenerate on generator changes", liveRegenerateValue)) {
+                s.liveRegenerate[0] = liveRegenerateValue.get();
+            }
+
+            ImBoolean autoRegenerateValue = new ImBoolean(s.autoRegenerate[0]);
+            if (ImGui.checkbox("Auto new garden", autoRegenerateValue)) {
+                s.autoRegenerate[0] = autoRegenerateValue.get();
+            }
+
             ImGui.sliderFloat("Auto regen seconds", s.autoRegenerateSeconds, 1.0f, 60.0f);
-            ImGui.checkbox("Pause growth", s.pauseGrowth);
+
+            ImBoolean pauseGrowthValue = new ImBoolean(s.pauseGrowth[0]);
+            if (ImGui.checkbox("Pause growth", pauseGrowthValue)) {
+                s.pauseGrowth[0] = pauseGrowthValue.get();
+            }
+
             ImGui.textWrapped("R = new seed, G = regrow same seed, F1 = randomize all, Tab = toggle this panel, Esc = release/capture mouse.");
         }
 
         if (ImGui.collapsingHeader("Population / Distribution")) {
             if (ImGui.sliderInt("Crystal count", s.activeCount, 256, GardenSettings.MAX_CRYSTALS)) generationChanged = true;
-            if (ImGui.combo("Distribution", s.distribution, GardenSettings.DISTRIBUTIONS)) generationChanged = true;
+
+            ImInt distributionValue = new ImInt(s.distribution[0]);
+            if (ImGui.combo("Distribution", distributionValue, GardenSettings.DISTRIBUTIONS)) {
+                s.distribution[0] = distributionValue.get();
+                generationChanged = true;
+            }
+
             if (ImGui.sliderFloat("Spacing / field scale", s.spacing, 0.10f, 1.20f)) generationChanged = true;
             if (ImGui.sliderFloat("Placement jitter", s.jitter, 0.0f, 1.5f)) generationChanged = true;
             if (ImGui.sliderFloat("Empty / sparse fraction", s.sparsity, 0.0f, 0.80f)) generationChanged = true;
