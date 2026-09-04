@@ -45,6 +45,13 @@ public final class ShaderProgram implements AutoCloseable {
         }
     }
 
+    public void setInt(String name, int value) {
+        int location = glGetUniformLocation(programId, name);
+        if (location >= 0) {
+            glUniform1i(location, value);
+        }
+    }
+
     public void setUnsignedInt(String name, int value) {
         int location = glGetUniformLocation(programId, name);
         if (location >= 0) {
@@ -53,10 +60,21 @@ public final class ShaderProgram implements AutoCloseable {
     }
 
     public void setVector3(String name, Vector3f value) {
+        setVector3(name, value.x, value.y, value.z);
+    }
+
+    public void setVector3(String name, float x, float y, float z) {
         int location = glGetUniformLocation(programId, name);
         if (location >= 0) {
-            glUniform3f(location, value.x, value.y, value.z);
+            glUniform3f(location, x, y, z);
         }
+    }
+
+    public void setVector3(String name, float[] value) {
+        if (value == null || value.length < 3) {
+            throw new IllegalArgumentException("vec3 uniform requires at least three values");
+        }
+        setVector3(name, value[0], value[1], value[2]);
     }
 
     public void setMatrix4(String name, Matrix4f matrix) {
