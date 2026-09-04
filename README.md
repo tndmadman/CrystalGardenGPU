@@ -21,7 +21,7 @@ The first milestone uses a compute shader to initialize and grow **16,384 crysta
 
 ## Stack
 
-- Java 21
+- Java 20
 - Gradle
 - LWJGL 3.3.6
 - OpenGL 4.6 core
@@ -30,19 +30,13 @@ The first milestone uses a compute shader to initialize and grow **16,384 crysta
 
 ## Run
 
-With Gradle installed:
+On Windows, double-click `run.bat`. It uses an installed JDK 20 if available; otherwise it caches a portable Temurin JDK 20 for this project. Gradle is also cached locally after the first setup.
+
+With Gradle installed manually:
 
 ```bash
 gradle run
 ```
-
-If you want a Gradle wrapper in your clone, generate it once with:
-
-```bash
-gradle wrapper
-```
-
-Then future launches can use `./gradlew run` or `.\gradlew.bat run` on Windows.
 
 A GPU/driver exposing OpenGL 4.6 is required. The project is targeted primarily at modern NVIDIA hardware; the original development target is an RTX 3090.
 
