@@ -9,13 +9,18 @@ echo ========================================
 echo.
 
 rem Isolate this project from machine-wide Java/Gradle flags that can inject
-rem malformed options such as a bare -classpath into every Java process.
+rem malformed options into every Java process.
 set "JAVA_OPTS="
 set "GRADLE_OPTS="
 set "JAVA_TOOL_OPTIONS="
 set "_JAVA_OPTIONS="
 set "JDK_JAVA_OPTIONS="
-set "CLASSPATH="
+
+rem Gradle 8.14.3 has a Windows launcher bug where an undefined/empty
+rem CLASSPATH can become: java -classpath "" ...
+rem Java rejects that with "-classpath requires class path specification".
+rem A harmless non-empty classpath works around the upstream launcher bug.
+set "CLASSPATH=."
 
 where java >nul 2>&1
 if errorlevel 1 (
@@ -94,6 +99,7 @@ if not exist "%GRADLE_CMD%" (
 :gradle_ready
 echo Java check: OK
 echo Gradle: %GRADLE_CMD%
+echo Gradle 8.14.3 Windows classpath workaround: ON
 echo.
 
 echo [1/2] Compiling...
@@ -101,11 +107,6 @@ call "%GRADLE_CMD%" --no-daemon classes
 if errorlevel 1 (
     echo.
     echo BUILD FAILED.
-    echo.
-    echo If the first error above still mentions -classpath, run these commands
-    echo in Command Prompt and send me the output:
-    echo   where java
-    echo   java -version
     echo.
     pause
     exit /b 1
