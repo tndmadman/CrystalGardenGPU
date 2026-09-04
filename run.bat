@@ -17,21 +17,58 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set "GRADLE_CMD="
+rem Prefer a committed Gradle wrapper when one exists.
 if exist "%~dp0gradlew.bat" (
     set "GRADLE_CMD=%~dp0gradlew.bat"
-) else (
-    where gradle >nul 2>&1
-    if errorlevel 1 (
-        echo ERROR: Gradle was not found and gradlew.bat is not present.
-        echo Install Gradle once, or generate/commit the Gradle wrapper.
-        echo.
-        pause
-        exit /b 1
-    )
-    set "GRADLE_CMD=gradle"
+    goto :gradle_ready
 )
 
+rem Otherwise use a project-local portable Gradle installation.
+rem This keeps run.bat one-click and does not require a system Gradle install.
+set "GRADLE_VERSION=8.14.3"
+set "LOCAL_GRADLE_ROOT=%~dp0.gradle\portable"
+set "LOCAL_GRADLE_HOME=%~dp0.gradle\portable\gradle-%GRADLE_VERSION%"
+set "LOCAL_GRADLE_ZIP=%~dp0.gradle\portable\gradle-%GRADLE_VERSION%-bin.zip"
+set "GRADLE_CMD=%LOCAL_GRADLE_HOME%\bin\gradle.bat"
+
+if exist "%GRADLE_CMD%" goto :gradle_ready
+
+echo Gradle %GRADLE_VERSION% is not cached yet.
+echo Downloading a portable copy for this project...
+echo This only happens on the first run.
+echo.
+
+where powershell >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: PowerShell was not found.
+    echo It is required once to download the portable Gradle package.
+    echo.
+    pause
+    exit /b 1
+)
+
+if not exist "%LOCAL_GRADLE_ROOT%" mkdir "%LOCAL_GRADLE_ROOT%"
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri ('https://services.gradle.org/distributions/gradle-' + $env:GRADLE_VERSION + '-bin.zip') -OutFile $env:LOCAL_GRADLE_ZIP; Expand-Archive -LiteralPath $env:LOCAL_GRADLE_ZIP -DestinationPath $env:LOCAL_GRADLE_ROOT -Force; Remove-Item -LiteralPath $env:LOCAL_GRADLE_ZIP -Force"
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to download or extract Gradle.
+    echo Check your internet connection and try again.
+    echo.
+    pause
+    exit /b 1
+)
+
+if not exist "%GRADLE_CMD%" (
+    echo.
+    echo ERROR: Gradle downloaded, but gradle.bat was not found where expected:
+    echo %GRADLE_CMD%
+    echo.
+    pause
+    exit /b 1
+)
+
+:gradle_ready
 echo [1/2] Compiling...
 call "%GRADLE_CMD%" classes
 if errorlevel 1 (
