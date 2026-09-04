@@ -6,31 +6,47 @@ in vec3 vColor;
 in float vHeightRatio;
 
 uniform vec3 uCameraPos;
+uniform vec3 uLightDirection;
+uniform vec3 uFogColor;
+uniform float uAmbient;
+uniform float uLightIntensity;
+uniform float uSpecularStrength;
+uniform float uSpecularPower;
+uniform float uFresnelStrength;
+uniform float uEmission;
+uniform float uBandScale;
+uniform float uBandStrength;
+uniform float uFogDensity;
+uniform float uFogMax;
+uniform float uExposure;
 
 out vec4 fragColor;
 
 void main() {
     vec3 N = normalize(vNormal);
     vec3 V = normalize(uCameraPos - vWorldPos);
-    vec3 L = normalize(vec3(-0.36, 0.82, 0.28));
+    vec3 L = normalize(uLightDirection);
     vec3 H = normalize(V + L);
 
     float diffuse = max(dot(N, L), 0.0);
-    float specular = pow(max(dot(N, H), 0.0), 72.0);
+    float specular = pow(max(dot(N, H), 0.0), max(2.0, uSpecularPower));
     float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);
 
-    float internalBands = 0.92 + 0.08 * sin(vWorldPos.y * 13.0 + vWorldPos.x * 2.3 + vWorldPos.z * 1.7);
-    float growthGlow = mix(0.28, 1.0, smoothstep(0.0, 0.22, vHeightRatio));
+    float bandWave = sin(vWorldPos.y * uBandScale + vWorldPos.x * 2.3 + vWorldPos.z * 1.7);
+    float internalBands = 1.0 + bandWave * uBandStrength;
+    float growthGlow = mix(0.22, 1.0, smoothstep(0.0, 0.28, vHeightRatio));
 
-    vec3 color = vColor * (0.12 + diffuse * 0.88) * internalBands;
-    color += vColor * fresnel * 1.25;
-    color += vec3(0.88, 0.96, 1.0) * specular * 1.15;
-    color += vColor * 0.06 * growthGlow;
+    vec3 color = vColor * (uAmbient + diffuse * uLightIntensity) * internalBands;
+    color += vColor * fresnel * uFresnelStrength;
+    color += vec3(0.88, 0.96, 1.0) * specular * uSpecularStrength;
+    color += vColor * uEmission * growthGlow;
+
+    // Simple filmic-ish exposure mapping keeps very bright procedural presets usable.
+    color = vec3(1.0) - exp(-max(color, vec3(0.0)) * max(0.01, uExposure));
 
     float distanceToCamera = length(uCameraPos - vWorldPos);
-    float fog = 1.0 - exp(-distanceToCamera * 0.018);
-    vec3 fogColor = vec3(0.004, 0.006, 0.012);
-    color = mix(color, fogColor, clamp(fog, 0.0, 0.82));
+    float fog = 1.0 - exp(-distanceToCamera * max(0.0, uFogDensity));
+    color = mix(color, uFogColor, clamp(fog, 0.0, clamp(uFogMax, 0.0, 1.0)));
 
     fragColor = vec4(color, 1.0);
 }
